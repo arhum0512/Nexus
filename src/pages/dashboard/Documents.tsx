@@ -31,7 +31,7 @@ export const Documents: React.FC = () => {
   const fetchDocuments = async () => {
     try {
       const token = localStorage.getItem('business_nexus_token');
-      const res = await fetch('http://localhost:5000/api/documents', {
+      const res = await fetch('https://nexus-backend-jlqe.onrender.com/api/documents', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -63,7 +63,7 @@ export const Documents: React.FC = () => {
     formData.append('documentType', uploadType);
 
     try {
-      const res = await fetch('http://localhost:5000/api/documents/upload', {
+      const res = await fetch('https://nexus-backend-jlqe.onrender.com/api/documents/upload', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -98,7 +98,7 @@ export const Documents: React.FC = () => {
     formData.append('signature', signatureFile);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/documents/${signingDocId}/sign`, {
+      const res = await fetch(`https://nexus-backend-jlqe.onrender.com/api/documents/${signingDocId}/sign`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -170,7 +170,7 @@ export const Documents: React.FC = () => {
                 {/* NEW: View Doc Button triggers Modal instead of new tab */}
                 <button 
                   onClick={() => {
-                    setSelectedDocUrl(`http://localhost:5000${doc.fileUrl}`);
+                    setSelectedDocUrl(`https://nexus-backend-jlqe.onrender.com${doc.fileUrl}`);
                     setSelectedDocName(doc.title);
                     setIsViewerOpen(true);
                   }}

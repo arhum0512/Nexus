@@ -7,7 +7,7 @@ import { messageService } from '../../api/messageService';
 import { Button } from '../../components/ui/Button';
 
 // Connect outside the component to prevent multiple connections on re-renders
-const socket: Socket = io('http://localhost:5000', {
+const socket: Socket = io('https://nexus-backend-jlqe.onrender.com', {
   autoConnect: false // We will connect it manually when the component loads
 });
 

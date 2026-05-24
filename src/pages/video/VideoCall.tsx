@@ -6,7 +6,7 @@ import { Phone, PhoneOff, ArrowLeft, Mic, MicOff, Video, VideoOff } from 'lucide
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 
-const socket: Socket = io('http://localhost:5000');
+const socket: Socket = io('https://nexus-backend-jlqe.onrender.com');
 
 export const VideoCall: React.FC = () => {
   const { user } = useAuth();

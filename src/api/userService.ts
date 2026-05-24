@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api/users';
+const API_URL = 'https://nexus-backend-jlqe.onrender.com/api/users';
 const TOKEN_KEY = 'business_nexus_token';
 
 const getHeaders = () => {

@@ -11,7 +11,7 @@ const TOKEN_STORAGE_KEY = 'business_nexus_token'; // Added token key for JWT
 const RESET_TOKEN_KEY = 'business_nexus_reset_token';
 
 // Backend API URL
-const API_URL = 'http://localhost:5000/api/auth';
+const API_URL = 'https://nexus-backend-jlqe.onrender.com/api/auth';
 
 // Auth Provider Component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

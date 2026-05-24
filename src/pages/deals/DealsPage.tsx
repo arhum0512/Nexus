@@ -16,7 +16,7 @@ export const DealsPage: React.FC = () => {
   const fetchFinancials = async () => {
     try {
       const token = localStorage.getItem('business_nexus_token');
-      const res = await fetch('http://localhost:5000/api/payments/history', {
+      const res = await fetch('https://nexus-backend-jlqe.onrender.com/api/payments/history', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -43,7 +43,7 @@ export const DealsPage: React.FC = () => {
     const token = localStorage.getItem('business_nexus_token');
     
     // Determine the correct API endpoint based on which modal is open
-    const endpoint = `http://localhost:5000/api/payments/${activeModal}`;
+    const endpoint = `https://nexus-backend-jlqe.onrender.com/api/payments/${activeModal}`;
     const payload = activeModal === 'transfer' 
       ? { amount: Number(amount), recipientId }
       : { amount: Number(amount) };

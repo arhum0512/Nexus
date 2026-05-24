@@ -36,7 +36,7 @@ function App() {
 
   // --- Backend Connection Test ---
   useEffect(() => {
-    fetch('http://localhost:5000/api/status')
+    fetch('https://nexus-backend-jlqe.onrender.com/api/status')
       .then((res) => res.json())
       .then((data) => console.log("Backend Connection Status:", data.message))
       .catch((err) => console.error("Connection Failed:", err));
