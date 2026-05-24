@@ -14,9 +14,10 @@ import { getRequestsForEntrepreneur } from '../../data/collaborationRequests';
 import { meetingService } from '../../api/meetingService';
 import { userService } from '../../api/userService';
 
-// --- NEW: Calendar Library Imports ---
+// --- NEW: Calendar & Payment Imports ---
 import ReactCalendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
+import { CheckoutButton } from '../../components/ui/CheckoutButton';
 
 export const EntrepreneurDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -194,7 +195,16 @@ export const EntrepreneurDashboard: React.FC = () => {
         {/* Right Column: Calendar & Investors */}
         <div className="space-y-6">
           
-          {/* NEW: Interactive Calendar Widget */}
+          {/* NEW: Stripe Premium Upgrade Button */}
+          <Card className="bg-indigo-50 border-indigo-100">
+            <CardBody className="flex flex-col items-center text-center">
+              <h3 className="text-lg font-bold text-indigo-900 mb-2">Unlock Nexus Premium</h3>
+              <p className="text-sm text-indigo-700 mb-4">Get unlimited document uploads and advanced analytics.</p>
+              <CheckoutButton />
+            </CardBody>
+          </Card>
+
+          {/* Interactive Calendar Widget */}
           <Card>
             <CardHeader>
               <h2 className="text-lg font-medium text-gray-900">Meeting Schedule</h2>
