@@ -12,21 +12,33 @@ const meetingRoutes = require('./routes/meetingRoutes');
 const userRoutes = require('./routes/userRoutes'); 
 const documentRoutes = require('./routes/documentRoutes');
 const messageRoutes = require('./routes/messageRoutes'); 
+const paymentRoutes = require('./routes/paymentRoutes'); 
 const Message = require('./models/Message'); 
 
 const app = express();
+
+// --- Define Allowed Origins (CRITICAL FIX) ---
+const allowedOrigins = [
+    "http://localhost:3000", 
+    "http://localhost:5173",
+    "https://nexus-git-main-arhum-shah.vercel.app" 
+];
 
 // --- Wrap Express in an HTTP Server for Socket.io ---
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: ["http://localhost:3000", "http://localhost:5173"], 
-        methods: ["GET", "POST"]
+        origin: allowedOrigins,
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+        credentials: true
     }
 });
 
 // --- 1. Middleware ---
-app.use(cors());
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true
+}));
 app.use(express.json()); 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -49,7 +61,7 @@ app.use('/api/meetings', meetingRoutes);
 app.use('/api/users', userRoutes); 
 app.use('/api/documents', documentRoutes); 
 app.use('/api/messages', messageRoutes); 
-app.use('/api/payments', require('./routes/paymentRoutes'));
+app.use('/api/payments', paymentRoutes); 
 
 // --- 4. WebSockets (Live Chat & Video Signaling) ---
 io.on('connection', (socket) => {
@@ -77,13 +89,10 @@ io.on('connection', (socket) => {
         }
     });
 
-    // --- B. NEW: Video Calling Signaling Logic ---
+    // --- B. Video Calling Signaling Logic ---
     
     // 1. Initiating a Call
     socket.on('call_user', (data) => {
-        // userToCall is the ID of the person receiving the call
-        // signalData contains the caller's video stream info
-        // from is the ID of the person making the call
         io.to(data.userToCall).emit('incoming_call', { 
             signal: data.signalData, 
             from: data.from 
@@ -92,7 +101,6 @@ io.on('connection', (socket) => {
 
     // 2. Answering a Call
     socket.on('answer_call', (data) => {
-        // Send the receiver's video stream info back to the caller
         io.to(data.to).emit('call_accepted', data.signal);
     });
 
