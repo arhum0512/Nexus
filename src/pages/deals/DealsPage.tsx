@@ -1,272 +1,229 @@
-import React, { useState } from 'react';
-import { Search, Filter, DollarSign, TrendingUp, Users, Calendar } from 'lucide-react';
-import { Card, CardHeader, CardBody } from '../../components/ui/Card';
-import { Input } from '../../components/ui/Input';
+import React, { useState, useEffect } from 'react';
+import { DollarSign, ArrowUpRight, ArrowDownRight, Send, History, X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
-import { Avatar } from '../../components/ui/Avatar';
-
-const deals = [
-  {
-    id: 1,
-    startup: {
-      name: 'TechWave AI',
-      logo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg',
-      industry: 'FinTech'
-    },
-    amount: '$1.5M',
-    equity: '15%',
-    status: 'Due Diligence',
-    stage: 'Series A',
-    lastActivity: '2024-02-15'
-  },
-  {
-    id: 2,
-    startup: {
-      name: 'GreenLife Solutions',
-      logo: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg',
-      industry: 'CleanTech'
-    },
-    amount: '$2M',
-    equity: '20%',
-    status: 'Term Sheet',
-    stage: 'Seed',
-    lastActivity: '2024-02-10'
-  },
-  {
-    id: 3,
-    startup: {
-      name: 'HealthPulse',
-      logo: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg',
-      industry: 'HealthTech'
-    },
-    amount: '$800K',
-    equity: '12%',
-    status: 'Negotiation',
-    stage: 'Pre-seed',
-    lastActivity: '2024-02-05'
-  }
-];
 
 export const DealsPage: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
-  
-  const statuses = ['Due Diligence', 'Term Sheet', 'Negotiation', 'Closed', 'Passed'];
-  
-  const toggleStatus = (status: string) => {
-    setSelectedStatus(prev => 
-      prev.includes(status)
-        ? prev.filter(s => s !== status)
-        : [...prev, status]
-    );
-  };
-  
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Due Diligence':
-        return 'primary';
-      case 'Term Sheet':
-        return 'secondary';
-      case 'Negotiation':
-        return 'accent';
-      case 'Closed':
-        return 'success';
-      case 'Passed':
-        return 'error';
-      default:
-        return 'gray';
+  const [balance, setBalance] = useState<number>(0);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Modal State
+  const [activeModal, setActiveModal] = useState<'deposit' | 'withdraw' | 'transfer' | null>(null);
+  const [amount, setAmount] = useState('');
+  const [recipientId, setRecipientId] = useState('');
+  const [processing, setProcessing] = useState(false);
+
+  const fetchFinancials = async () => {
+    try {
+      const token = localStorage.getItem('business_nexus_token');
+      const res = await fetch('http://localhost:5000/api/payments/history', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBalance(data.balance || 0);
+        setTransactions(data.transactions || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch financials", error);
+    } finally {
+      setLoading(false);
     }
   };
-  
+
+  useEffect(() => {
+    fetchFinancials();
+  }, []);
+
+  const handleTransaction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!amount || Number(amount) <= 0) return alert("Enter a valid amount.");
+
+    setProcessing(true);
+    const token = localStorage.getItem('business_nexus_token');
+    
+    // Determine the correct API endpoint based on which modal is open
+    const endpoint = `http://localhost:5000/api/payments/${activeModal}`;
+    const payload = activeModal === 'transfer' 
+      ? { amount: Number(amount), recipientId }
+      : { amount: Number(amount) };
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        await fetchFinancials(); // Refresh the UI with new balance/history
+        closeModal();
+      } else {
+        alert(`Error: ${data.message}`);
+      }
+    } catch (error) {
+      console.error("Transaction failed", error);
+      alert("Transaction failed. Check console.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const closeModal = () => {
+    setActiveModal(null);
+    setAmount('');
+    setRecipientId('');
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Investment Deals</h1>
-          <p className="text-gray-600">Track and manage your investment pipeline</p>
-        </div>
-        
-        <Button>
-          Add Deal
-        </Button>
+    <div className="p-6 max-w-6xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">Financial Hub</h1>
+        <p className="text-gray-500">Manage your Nexus wallet and funding deals.</p>
       </div>
-      
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-3 bg-primary-100 rounded-lg mr-3">
-                <DollarSign size={20} className="text-primary-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Investment</p>
-                <p className="text-lg font-semibold text-gray-900">$4.3M</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-        
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-3 bg-secondary-100 rounded-lg mr-3">
-                <TrendingUp size={20} className="text-secondary-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Active Deals</p>
-                <p className="text-lg font-semibold text-gray-900">8</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-        
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-3 bg-accent-100 rounded-lg mr-3">
-                <Users size={20} className="text-accent-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Portfolio Companies</p>
-                <p className="text-lg font-semibold text-gray-900">12</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-        
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-3 bg-success-100 rounded-lg mr-3">
-                <Calendar size={20} className="text-success-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Closed This Month</p>
-                <p className="text-lg font-semibold text-gray-900">2</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-      </div>
-      
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="w-full md:w-2/3">
-          <Input
-            placeholder="Search deals by startup name or industry..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            startAdornment={<Search size={18} />}
-            fullWidth
-          />
-        </div>
-        
-        <div className="w-full md:w-1/3">
-          <div className="flex items-center gap-2">
-            <Filter size={18} className="text-gray-500" />
-            <div className="flex flex-wrap gap-2">
-              {statuses.map(status => (
-                <Badge
-                  key={status}
-                  variant={selectedStatus.includes(status) ? getStatusColor(status) : 'gray'}
-                  className="cursor-pointer"
-                  onClick={() => toggleStatus(status)}
-                >
-                  {status}
-                </Badge>
-              ))}
-            </div>
+
+      {/* Top Section: Wallet Balance & Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Balance Card */}
+        <div className="bg-gradient-to-br from-primary-600 to-primary-800 rounded-xl p-6 text-white shadow-lg md:col-span-1">
+          <p className="text-primary-100 mb-1">Available Balance</p>
+          <h2 className="text-4xl font-bold mb-6">${balance.toLocaleString()}</h2>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setActiveModal('deposit')}
+              className="flex-1 bg-white/20 hover:bg-white/30 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1"
+            >
+              <ArrowDownRight size={16} /> Deposit
+            </button>
+            <button 
+              onClick={() => setActiveModal('withdraw')}
+              className="flex-1 bg-white/20 hover:bg-white/30 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1"
+            >
+              <ArrowUpRight size={16} /> Withdraw
+            </button>
           </div>
         </div>
-      </div>
-      
-      {/* Deals table */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-lg font-medium text-gray-900">Active Deals</h2>
-        </CardHeader>
-        <CardBody>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Startup
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Equity
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Stage
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Last Activity
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {deals.map(deal => (
-                  <tr key={deal.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Avatar
-                          src={deal.startup.logo}
-                          alt={deal.startup.name}
-                          size="sm"
-                          className="flex-shrink-0"
-                        />
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {deal.startup.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {deal.startup.industry}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{deal.amount}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{deal.equity}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge variant={getStatusColor(deal.status)}>
-                        {deal.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{deal.stage}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
-                        {new Date(deal.lastActivity).toLocaleDateString()}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Button variant="outline" size="sm">
-                        View Details
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+        {/* Transfer/Deal Card */}
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm md:col-span-2 flex flex-col justify-center items-start">
+          <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
+            <Send size={24} />
           </div>
-        </CardBody>
-      </Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Fund a Startup</h3>
+          <p className="text-gray-500 text-sm mb-4">
+            Transfer funds directly to another user's wallet to finalize a deal.
+          </p>
+          <Button variant="outline" onClick={() => setActiveModal('transfer')}>
+            Initiate Transfer
+          </Button>
+        </div>
+      </div>
+
+      {/* Transaction History */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center gap-2">
+          <History size={18} className="text-gray-500" />
+          <h3 className="font-semibold text-gray-900">Transaction History</h3>
+        </div>
+        
+        {loading ? (
+          <div className="p-8 text-center text-gray-500">Loading history...</div>
+        ) : transactions.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">No transactions found.</div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {transactions.map((tx, index) => (
+              <div key={index} className="p-4 flex items-center justify-between hover:bg-gray-50">
+                <div className="flex items-center gap-4">
+                  <div className={`p-2 rounded-full ${
+                    tx.type === 'Deposit' ? 'bg-green-100 text-green-600' : 
+                    tx.type === 'Withdrawal' ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-600'
+                  }`}>
+                    {tx.type === 'Deposit' && <ArrowDownRight size={20} />}
+                    {tx.type === 'Withdrawal' && <ArrowUpRight size={20} />}
+                    {tx.type === 'Transfer' && <Send size={20} />}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">{tx.type}</p>
+                    <p className="text-xs text-gray-500">{new Date(tx.createdAt).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className={`font-bold ${tx.type === 'Deposit' ? 'text-green-600' : 'text-gray-900'}`}>
+                    {tx.type === 'Deposit' ? '+' : '-'}${tx.amount.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {tx.status}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* --- REUSABLE TRANSACTION MODAL --- */}
+      {activeModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+            <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
+              <h3 className="font-semibold text-gray-900 capitalize">{activeModal} Funds</h3>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleTransaction} className="p-6 flex flex-col gap-4">
+              {/* If Transfer, show Recipient ID input */}
+              {activeModal === 'transfer' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Recipient User ID</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={recipientId}
+                    onChange={(e) => setRecipientId(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 outline-none focus:border-primary-500"
+                    placeholder="Paste the receiver's ID here"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <DollarSign size={16} className="text-gray-400" />
+                  </div>
+                  <input 
+                    type="number" 
+                    required
+                    min="1"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md pl-10 pr-3 py-2 outline-none focus:border-primary-500"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end mt-4">
+                <Button variant="outline" type="button" onClick={closeModal}>
+                  Cancel
+                </Button>
+                <Button variant="primary" type="submit" disabled={processing}>
+                  {processing ? 'Processing...' : 'Confirm'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Bell, Calendar, TrendingUp, AlertCircle, PlusCircle } from 'lucide-react';
+import { Users, Bell, Calendar as CalendarIcon, TrendingUp, AlertCircle, PlusCircle, Video } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -9,18 +9,55 @@ import { InvestorCard } from '../../components/investor/InvestorCard';
 import { useAuth } from '../../context/AuthContext';
 import { CollaborationRequest } from '../../types';
 import { getRequestsForEntrepreneur } from '../../data/collaborationRequests';
-import { investors } from '../../data/users';
+
+// --- Imports for Real Backend APIs ---
+import { meetingService } from '../../api/meetingService';
+import { userService } from '../../api/userService';
+
+// --- NEW: Calendar Library Imports ---
+import ReactCalendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 
 export const EntrepreneurDashboard: React.FC = () => {
   const { user } = useAuth();
   const [collaborationRequests, setCollaborationRequests] = useState<CollaborationRequest[]>([]);
-  const [recommendedInvestors, setRecommendedInvestors] = useState(investors.slice(0, 3));
   
+  // --- Initialize state for real database data ---
+  const [recommendedInvestors, setRecommendedInvestors] = useState<any[]>([]);
+  const [meetings, setMeetings] = useState<any[]>([]);
+  
+  // NEW: Calendar State
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
   useEffect(() => {
     if (user) {
-      // Load collaboration requests
+      // Load mock collaboration requests
       const requests = getRequestsForEntrepreneur(user.id);
       setCollaborationRequests(requests);
+
+      // Fetch real meetings
+      const fetchMeetings = async () => {
+        try {
+          const fetchedMeetings = await meetingService.getUserMeetings();
+          setMeetings(fetchedMeetings); 
+        } catch (error) {
+          console.error("Failed to fetch meetings:", error);
+        }
+      };
+
+      // Fetch real investors from MongoDB
+      const fetchInvestors = async () => {
+        try {
+          const realInvestors = await userService.getInvestors();
+          // Take only the first 3 for the dashboard preview
+          setRecommendedInvestors(realInvestors.slice(0, 3)); 
+        } catch (error) {
+          console.error("Failed to fetch investors:", error);
+        }
+      };
+
+      fetchMeetings();
+      fetchInvestors();
     }
   }, [user]);
   
@@ -35,6 +72,14 @@ export const EntrepreneurDashboard: React.FC = () => {
   if (!user) return null;
   
   const pendingRequests = collaborationRequests.filter(req => req.status === 'pending');
+
+  // NEW: Helper to highlight dates on the calendar that have meetings
+  const hasMeetingOnDate = (date: Date) => {
+    return meetings.some(meeting => {
+      const meetingDate = new Date(meeting.scheduledAt);
+      return meetingDate.toDateString() === date.toDateString();
+    });
+  };
   
   return (
     <div className="space-y-6 animate-fade-in">
@@ -45,9 +90,7 @@ export const EntrepreneurDashboard: React.FC = () => {
         </div>
         
         <Link to="/investors">
-          <Button
-            leftIcon={<PlusCircle size={18} />}
-          >
+          <Button leftIcon={<PlusCircle size={18} />}>
             Find Investors
           </Button>
         </Link>
@@ -89,11 +132,11 @@ export const EntrepreneurDashboard: React.FC = () => {
           <CardBody>
             <div className="flex items-center">
               <div className="p-3 bg-accent-100 rounded-full mr-4">
-                <Calendar size={20} className="text-accent-700" />
+                <CalendarIcon size={20} className="text-accent-700" />
               </div>
               <div>
                 <p className="text-sm font-medium text-accent-700">Upcoming Meetings</p>
-                <h3 className="text-xl font-semibold text-accent-900">2</h3>
+                <h3 className="text-xl font-semibold text-accent-900">{meetings.length}</h3>
               </div>
             </div>
           </CardBody>
@@ -115,7 +158,8 @@ export const EntrepreneurDashboard: React.FC = () => {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Collaboration requests */}
+        
+        {/* Left Column: Collaboration requests */}
         <div className="lg:col-span-2 space-y-4">
           <Card>
             <CardHeader className="flex justify-between items-center">
@@ -147,8 +191,40 @@ export const EntrepreneurDashboard: React.FC = () => {
           </Card>
         </div>
         
-        {/* Recommended investors */}
-        <div className="space-y-4">
+        {/* Right Column: Calendar & Investors */}
+        <div className="space-y-6">
+          
+          {/* NEW: Interactive Calendar Widget */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-lg font-medium text-gray-900">Meeting Schedule</h2>
+            </CardHeader>
+            <CardBody className="flex flex-col items-center">
+              <style>
+                {`
+                  .react-calendar { border: none; width: 100%; font-family: inherit; }
+                  .react-calendar__tile--active { background: #4f46e5 !important; border-radius: 6px; }
+                  .react-calendar__tile--now { background: #e0e7ff; border-radius: 6px; }
+                  .highlight-meeting { font-weight: bold; color: #4f46e5; text-decoration: underline; }
+                `}
+              </style>
+              <ReactCalendar 
+                onChange={(val) => setSelectedDate(val as Date)} 
+                value={selectedDate}
+                tileClassName={({ date }) => hasMeetingOnDate(date) ? 'highlight-meeting' : ''}
+              />
+              
+              {/* Quick Meeting Shortcut */}
+              <div className="w-full mt-4 pt-4 border-t border-gray-100">
+                <Link to="/meetings" className="w-full flex items-center justify-center gap-2 py-2 bg-primary-50 text-primary-700 rounded-md text-sm font-medium hover:bg-primary-100 transition-colors">
+                  <Video size={16} />
+                  Join Video Chamber
+                </Link>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Recommended investors */}
           <Card>
             <CardHeader className="flex justify-between items-center">
               <h2 className="text-lg font-medium text-gray-900">Recommended Investors</h2>
@@ -158,16 +234,21 @@ export const EntrepreneurDashboard: React.FC = () => {
             </CardHeader>
             
             <CardBody className="space-y-4">
-              {recommendedInvestors.map(investor => (
-                <InvestorCard
-                  key={investor.id}
-                  investor={investor}
-                  showActions={false}
-                />
-              ))}
+              {recommendedInvestors.length > 0 ? (
+                recommendedInvestors.map(investor => (
+                  <InvestorCard
+                    key={investor.id}
+                    investor={investor}
+                    showActions={true}
+                  />
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-4">No investors found. Try creating an Investor account first!</p>
+              )}
             </CardBody>
           </Card>
         </div>
+        
       </div>
     </div>
   );

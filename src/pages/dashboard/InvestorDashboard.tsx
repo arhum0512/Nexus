@@ -1,47 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, PieChart, Filter, Search, PlusCircle } from 'lucide-react';
+import { Users, PieChart, Filter, Search, PlusCircle, Calendar as CalendarIcon, Check, X as CloseIcon } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import { EntrepreneurCard } from '../../components/entrepreneur/EntrepreneurCard';
 import { useAuth } from '../../context/AuthContext';
-import { Entrepreneur } from '../../types';
 import { entrepreneurs } from '../../data/users';
 import { getRequestsFromInvestor } from '../../data/collaborationRequests';
+import toast from 'react-hot-toast';
+
+// --- Import Real API Service ---
+import { meetingService } from '../../api/meetingService';
 
 export const InvestorDashboard: React.FC = () => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
   
+  // --- State for Real Meetings ---
+  const [meetings, setMeetings] = useState<any[]>([]);
+  
+  useEffect(() => {
+    if (user) {
+      // Fetch Real Meetings on Load
+      const fetchMeetings = async () => {
+        try {
+          const fetchedMeetings = await meetingService.getUserMeetings();
+          setMeetings(fetchedMeetings);
+        } catch (error) {
+          console.error("Failed to fetch meetings:", error);
+        }
+      };
+      fetchMeetings();
+    }
+  }, [user]);
+
+  // --- Handle Accept/Reject Meeting ---
+  const handleMeetingAction = async (meetingId: string, status: 'accepted' | 'rejected') => {
+    try {
+      await meetingService.updateStatus(meetingId, status);
+      toast.success(`Meeting ${status} successfully!`);
+      
+      // Refresh the meeting list to remove the pending request
+      const updatedMeetings = await meetingService.getUserMeetings();
+      setMeetings(updatedMeetings);
+    } catch (error) {
+      toast.error((error as Error).message || "Failed to update meeting status.");
+    }
+  };
+  
   if (!user) return null;
   
-  // Get collaboration requests sent by this investor
   const sentRequests = getRequestsFromInvestor(user.id);
-  const requestedEntrepreneurIds = sentRequests.map(req => req.entrepreneurId);
   
-  // Filter entrepreneurs based on search and industry filters
+  // Filter entrepreneurs based on search and industry filters (Currently using mock data)
   const filteredEntrepreneurs = entrepreneurs.filter(entrepreneur => {
-    // Search filter
     const matchesSearch = searchQuery === '' || 
       entrepreneur.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       entrepreneur.startupName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       entrepreneur.industry.toLowerCase().includes(searchQuery.toLowerCase()) ||
       entrepreneur.pitchSummary.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Industry filter
     const matchesIndustry = selectedIndustries.length === 0 || 
       selectedIndustries.includes(entrepreneur.industry);
     
     return matchesSearch && matchesIndustry;
   });
   
-  // Get unique industries for filter
   const industries = Array.from(new Set(entrepreneurs.map(e => e.industry)));
   
-  // Toggle industry selection
   const toggleIndustry = (industry: string) => {
     setSelectedIndustries(prevSelected => 
       prevSelected.includes(industry)
@@ -49,6 +78,11 @@ export const InvestorDashboard: React.FC = () => {
         : [...prevSelected, industry]
     );
   };
+
+  // Find incoming meeting requests where the Investor is the recipient
+  const pendingMeetings = meetings.filter(m => 
+    m.status === 'pending' && (m.recipient?._id === user.id || m.recipient?.id === user.id || m.recipient === user.id)
+  );
   
   return (
     <div className="space-y-6 animate-fade-in">
@@ -59,13 +93,57 @@ export const InvestorDashboard: React.FC = () => {
         </div>
         
         <Link to="/entrepreneurs">
-          <Button
-            leftIcon={<PlusCircle size={18} />}
-          >
+          <Button leftIcon={<PlusCircle size={18} />}>
             View All Startups
           </Button>
         </Link>
       </div>
+
+      {/* --- NEW: Pending Meeting Requests Section --- */}
+      {pendingMeetings.length > 0 && (
+        <Card className="border-accent-200 shadow-md">
+          <CardHeader className="bg-accent-50 border-b border-accent-100 flex justify-between items-center">
+            <div className="flex items-center">
+              <CalendarIcon size={20} className="text-accent-700 mr-2" />
+              <h2 className="text-lg font-medium text-accent-900">Incoming Meeting Requests</h2>
+            </div>
+            <Badge variant="primary">{pendingMeetings.length} Pending</Badge>
+          </CardHeader>
+          <CardBody className="space-y-3">
+            {pendingMeetings.map(meeting => (
+              <div key={meeting._id} className="flex flex-col md:flex-row md:justify-between md:items-center p-4 border rounded-lg bg-white hover:bg-gray-50 transition-colors">
+                <div className="mb-4 md:mb-0">
+                  <h4 className="font-semibold text-gray-900 text-lg">{meeting.title}</h4>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Requested by:</span> {meeting.requester?.name || 'Entrepreneur'}
+                  </p>
+                  <p className="text-sm text-accent-600 font-medium mt-1">
+                    {new Date(meeting.scheduledDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                    onClick={() => handleMeetingAction(meeting._id, 'rejected')}
+                  >
+                    <CloseIcon size={16} className="mr-1" /> Reject
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    className="bg-green-600 hover:bg-green-700 border-green-600"
+                    onClick={() => handleMeetingAction(meeting._id, 'accepted')}
+                  >
+                    <Check size={16} className="mr-1" /> Accept
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardBody>
+        </Card>
+      )}
       
       {/* Filters and search */}
       <div className="flex flex-col md:flex-row gap-4">
@@ -137,9 +215,10 @@ export const InvestorDashboard: React.FC = () => {
                 <Users size={20} className="text-accent-700" />
               </div>
               <div>
-                <p className="text-sm font-medium text-accent-700">Your Connections</p>
+                <p className="text-sm font-medium text-accent-700">Scheduled Meetings</p>
+                {/* Dynamically count accepted meetings */}
                 <h3 className="text-xl font-semibold text-accent-900">
-                  {sentRequests.filter(req => req.status === 'accepted').length}
+                  {meetings.filter(m => m.status === 'accepted').length}
                 </h3>
               </div>
             </div>

@@ -23,8 +23,8 @@ export const LoginPage: React.FC = () => {
     
     try {
       await login(email, password, role);
-      // Redirect based on user role
-      navigate(role === 'entrepreneur' ? '/dashboard/entrepreneur' : '/dashboard/investor');
+      // NEW: Intercept the login and redirect to the 2FA screen!
+      navigate('/verify-2fa');
     } catch (err) {
       setError((err as Error).message);
       setIsLoading(false);
